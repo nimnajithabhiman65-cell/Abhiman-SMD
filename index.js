@@ -78,29 +78,26 @@ async function connectToWA() {
     generateHighQualityLinkPreview: true,
   });
 
-  Abhiman.ev.on('connection.update', async (update) => {
-    const { connection, lastDisconnect } = update;
-    if (connection === 'close') {
-      if (lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut) {
-        connectToWA();
-      }
-    } else if (connection === 'open') {
-      console.log('✅ Abhiman-SMD connected to your WhatsApp');
+connection.ev.on("connection.update", (update) => {
+  const { connection, lastDisconnect } = update;
 
-      const up = `Abhiman-SMD connected successfully ✅\n\nPREFIX: ${prefix}`;
-      await Abhiman.sendMessage(ownerNumber[0] + "@s.whatsapp.net", {
-        image: { url: `https://github.com/nimnajithabhiman65-cell/Abhiman-SMD/blob/main/images/Abhiman-SMD%20connected%20successfully.png?raw=true` },
-        caption: up
-      });
+  if (connection === "open") {
+    console.log("✅ Bot connected");
+  }
 
-      fs.readdirSync("./plugins/").forEach((plugin) => {
-        if (path.extname(plugin).toLowerCase() === ".js") {
-          require(`./plugins/${plugin}`);
-        }
-      });
+  if (connection === "close") {
+    const statusCode = lastDisconnect?.error?.output?.statusCode;
+
+    console.log("❌ Disconnected:", statusCode);
+
+    // ONLY reconnect if NOT logged out
+    if (statusCode !== 401) {
+      setTimeout(() => {
+        startBot();
+      }, 5000);
     }
-  });
-
+  }
+});
   Abhiman.ev.on('creds.update', saveCreds);
 
   Abhiman.ev.on('messages.upsert', async ({ messages }) => {
