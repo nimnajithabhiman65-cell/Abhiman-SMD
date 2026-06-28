@@ -2,13 +2,13 @@ const { cmd, commands } = require("../command");
 
 cmd(
   {
-    pattern: "menu",
+    pattern: ".menu",
     desc: "Displays all available commands",
     category: "main",
     filename: __filename,
   },
   async (
-    danuwa,
+    Abhiman,
     mek,
     m,
     {
