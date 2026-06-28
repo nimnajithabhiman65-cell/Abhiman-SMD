@@ -31,6 +31,7 @@ const ownerNumber = ['94787370465'];
 const credsPath = path.join(__dirname, '/auth_info_baileys/creds.json');
 
 async function ensureSessionFile() {
+  
   if (!fs.existsSync(credsPath)) {
     if (!config.SESSION_ID) {
       console.error('❌ SESSION_ID env variable is missing. Cannot restore session.');
@@ -62,27 +63,70 @@ async function ensureSessionFile() {
   }
 }
 
+let sock = null;
+let isConnecting = false;
+
 async function connectToWA() {
+  if (isConnecting) return; // ❌ prevent multiple connects
+  isConnecting = true;
+
   console.log("Connecting Abhiman-SMD 🧬...");
-  const { state, saveCreds } = await useMultiFileAuthState(path.join(__dirname, '/auth_info_baileys/'));
+
+  const { state, saveCreds } = await useMultiFileAuthState(
+    path.join(__dirname, '/auth_info_baileys/')
+    let sock = null;
+   let isConnecting = false;
+   let pluginsLoaded = false;
+  );
+
   const { version } = await fetchLatestBaileysVersion();
 
-  const Abhiman = makeWASocket({
+  sock = makeWASocket({
     logger: P({ level: 'silent' }),
     printQRInTerminal: false,
     browser: Browsers.macOS("Firefox"),
     auth: state,
     version,
-    syncFullHistory: true,
-    markOnlineOnConnect: true,
-    generateHighQualityLinkPreview: true,
+    syncFullHistory: false,
   });
+
+  sock.ev.on('creds.update', saveCreds);
+
+  sock.ev.on('connection.update', (update) => {
+    const { connection, lastDisconnect } = update;
+
+    if (connection === 'open') {
+      console.log('✅ Connected');
+      isConnecting = false;
+    }
+
+    if (connection === 'close') {
+      isConnecting = false;
+
+      const code = lastDisconnect?.error?.output?.statusCode;
+
+      console.log("❌ Disconnected:", code);
+
+      if (code !== DisconnectReason.loggedOut) {
+        setTimeout(() => connectToWA(), 5000);
+      }
+    }
+  });
+}
 
 connection.ev.on("connection.update", (update) => {
   const { connection, lastDisconnect } = update;
 
   if (connection === "open") {
     console.log("✅ Bot connected");
+    if (!pluginsLoaded) {
+  fs.readdirSync("./plugins/").forEach((plugin) => {
+    if (plugin.endsWith(".js")) {
+      require(`./plugins/${plugin}`);
+    }
+  });
+  pluginsLoaded = true;
+}
   }
 
   if (connection === "close") {
